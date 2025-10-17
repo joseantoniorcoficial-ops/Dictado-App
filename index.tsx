@@ -7,13 +7,13 @@
 import {GoogleGenAI} from '@google/genai';
 import {marked} from 'marked';
 
-// Fix: Declare html2pdf to resolve 'Cannot find name' error.
-declare const html2pdf: any;
+// Fix: Declare html2pdf to resolve TypeScript error for missing type definitions.
+declare var html2pdf: any;
 
 const MODEL_NAME = 'gemini-2.5-flash';
 const STORAGE_KEY = 'voice-notes-app-data';
 
-// Fix: Add Note interface for type safety.
+// Fix: Define an interface for the note object for type safety.
 interface Note {
   id: string;
   title: string;
@@ -23,32 +23,32 @@ interface Note {
 }
 
 class VoiceNotesApp {
-  // Fix: Declare all class properties to fix 'property does not exist' errors.
+  // Fix: Declare all class properties to resolve TypeScript errors.
   genAI: GoogleGenAI;
 
   // Main editor elements
-  recordButton: HTMLElement;
+  recordButton: HTMLButtonElement;
   recordingStatus: HTMLElement;
   rawTranscription: HTMLElement;
   polishedNote: HTMLElement;
   editorTitle: HTMLElement;
   
   // Theme toggle
-  themeToggleButton: HTMLElement;
+  themeToggleButton: HTMLButtonElement;
   themeToggleIcon: HTMLElement;
   
   // Sidebar and note management
   sidebar: HTMLElement;
-  noteList: HTMLElement;
-  newNoteButton: HTMLElement;
-  sidebarToggle: HTMLElement;
+  noteList: HTMLUListElement;
+  newNoteButton: HTMLButtonElement;
+  sidebarToggle: HTMLButtonElement;
 
   // Note actions
   saveStatus: HTMLElement;
-  copyPolishedButton: HTMLElement;
-  downloadMarkdownButton: HTMLElement;
-  downloadPdfButton: HTMLElement;
-  deleteNoteButton: HTMLElement;
+  copyPolishedButton: HTMLButtonElement;
+  downloadMarkdownButton: HTMLButtonElement;
+  downloadPdfButton: HTMLButtonElement;
+  deleteNoteButton: HTMLButtonElement;
   
   // Spinners
   rawSpinner: HTMLElement;
@@ -77,45 +77,43 @@ class VoiceNotesApp {
   timerIntervalId: number | null;
   recordingStartTime: number;
 
-
   constructor() {
     this.genAI = new GoogleGenAI({apiKey: process.env.API_KEY});
 
     // Main editor elements
-    // Fix: Add non-null assertion (!) to getElementById/querySelector calls to ensure elements are not null.
-    this.recordButton = document.getElementById('recordButton')!;
-    this.recordingStatus = document.getElementById('recordingStatus')!;
-    this.rawTranscription = document.getElementById('rawTranscription')!;
-    this.polishedNote = document.getElementById('polishedNote')!;
-    this.editorTitle = document.querySelector('.editor-title')!;
+    this.recordButton = document.getElementById('recordButton') as HTMLButtonElement;
+    this.recordingStatus = document.getElementById('recordingStatus') as HTMLElement;
+    this.rawTranscription = document.getElementById('rawTranscription') as HTMLElement;
+    this.polishedNote = document.getElementById('polishedNote') as HTMLElement;
+    this.editorTitle = document.querySelector('.editor-title') as HTMLElement;
     
     // Theme toggle
-    this.themeToggleButton = document.getElementById('themeToggleButton')!;
-    this.themeToggleIcon = this.themeToggleButton.querySelector('i')!;
+    this.themeToggleButton = document.getElementById('themeToggleButton') as HTMLButtonElement;
+    this.themeToggleIcon = this.themeToggleButton.querySelector('i') as HTMLElement;
     
     // Sidebar and note management
-    this.sidebar = document.querySelector('.sidebar')!;
-    this.noteList = document.getElementById('noteList')!;
-    this.newNoteButton = document.getElementById('newNoteButton')!;
-    this.sidebarToggle = document.getElementById('sidebarToggle')!;
+    this.sidebar = document.querySelector('.sidebar') as HTMLElement;
+    this.noteList = document.getElementById('noteList') as HTMLUListElement;
+    this.newNoteButton = document.getElementById('newNoteButton') as HTMLButtonElement;
+    this.sidebarToggle = document.getElementById('sidebarToggle') as HTMLButtonElement;
 
     // Note actions
-    this.saveStatus = document.getElementById('saveStatus')!;
-    this.copyPolishedButton = document.getElementById('copyPolishedButton')!;
-    this.downloadMarkdownButton = document.getElementById('downloadMarkdownButton')!;
-    this.downloadPdfButton = document.getElementById('downloadPdfButton')!;
-    this.deleteNoteButton = document.getElementById('deleteNoteButton')!;
+    this.saveStatus = document.getElementById('saveStatus') as HTMLElement;
+    this.copyPolishedButton = document.getElementById('copyPolishedButton') as HTMLButtonElement;
+    this.downloadMarkdownButton = document.getElementById('downloadMarkdownButton') as HTMLButtonElement;
+    this.downloadPdfButton = document.getElementById('downloadPdfButton') as HTMLButtonElement;
+    this.deleteNoteButton = document.getElementById('deleteNoteButton') as HTMLButtonElement;
     
     // Spinners
-    this.rawSpinner = document.getElementById('rawSpinner')!;
-    this.polishedSpinner = document.getElementById('polishedSpinner')!;
+    this.rawSpinner = document.getElementById('rawSpinner') as HTMLElement;
+    this.polishedSpinner = document.getElementById('polishedSpinner') as HTMLElement;
 
     // Live recording UI
-    this.recordingInterface = document.querySelector('.recording-interface')!;
-    this.liveRecordingTitle = document.getElementById('liveRecordingTitle')!;
+    this.recordingInterface = document.querySelector('.recording-interface') as HTMLElement;
+    this.liveRecordingTitle = document.getElementById('liveRecordingTitle') as HTMLElement;
     this.liveWaveformCanvas = document.getElementById('liveWaveformCanvas') as (HTMLCanvasElement | null);
-    this.liveRecordingTimerDisplay = document.getElementById('liveRecordingTimerDisplay')!;
-    this.statusIndicatorDiv = this.recordingInterface.querySelector('.status-indicator')!;
+    this.liveRecordingTimerDisplay = document.getElementById('liveRecordingTimerDisplay') as HTMLElement;
+    this.statusIndicatorDiv = this.recordingInterface.querySelector('.status-indicator') as HTMLElement;
     
     // Instance properties
     this.mediaRecorder = null;
@@ -377,7 +375,7 @@ class VoiceNotesApp {
   setupAudioVisualizer() {
     if (!this.stream || this.audioContext) return;
 
-    // Fix: Use type assertion for webkitAudioContext for broader browser compatibility.
+    // Fix: Handle vendor-prefixed webkitAudioContext for Safari compatibility.
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = this.audioContext.createMediaStreamSource(this.stream);
     this.analyserNode = this.audioContext.createAnalyser();
@@ -533,7 +531,8 @@ class VoiceNotesApp {
     }
     this.recordingStatus.textContent = 'Convirtiendo audio...';
     const reader = new FileReader();
-    const readResult: Promise<string | ArrayBuffer | null> = new Promise((resolve, reject) => {
+    reader.readAsDataURL(audioBlob);
+    const base64Audio = await new Promise<string>((resolve, reject) => {
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
           resolve(reader.result.split(',')[1]);
@@ -543,8 +542,7 @@ class VoiceNotesApp {
       };
       reader.onerror = () => reject(reader.error);
     });
-    reader.readAsDataURL(audioBlob);
-    const base64Audio = await readResult as string;
+
     if (!base64Audio) throw new Error('Falló la conversión de audio a base64');
     const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
     await this.getTranscription(base64Audio, mimeType);
@@ -554,10 +552,12 @@ class VoiceNotesApp {
     this.showSpinner(this.rawSpinner);
     try {
       this.recordingStatus.textContent = 'Obteniendo transcripción...';
-      const contents = [
-        {text: 'Genera una transcripción completa y detallada de este audio.'},
-        {inlineData: {mimeType, data: base64Audio}},
-      ];
+      const contents = {
+        parts: [
+          {text: 'Genera una transcripción completa y detallada de este audio.'},
+          {inlineData: {mimeType, data: base64Audio}},
+        ]
+      };
       const response = await this.genAI.models.generateContent({model: MODEL_NAME, contents});
       const transcriptionText = response.text;
 
@@ -588,7 +588,7 @@ class VoiceNotesApp {
     try {
       this.recordingStatus.textContent = 'Puliendo nota...';
       const prompt = `Toma esta transcripción en bruto y crea una nota pulida y bien formateada. Elimina palabras de relleno, repeticiones y titubeos. Formatea listas y encabezados usando Markdown. Mantén el significado original.\n\nTranscripción en bruto:\n${this.rawTranscription.textContent}`;
-      const response = await this.genAI.models.generateContent({model: MODEL_NAME, contents: prompt});
+      const response = await this.genAI.models.generateContent({model: MODEL_NAME, contents: { parts: [{ text: prompt }]}});
       const polishedText = response.text;
       
       if (polishedText) {
