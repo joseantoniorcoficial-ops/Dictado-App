@@ -1,0 +1,8 @@
+{
+  "name": "Dictado App",
+  "description": "Deje que Gemini convierta sus grabaciones de audio desordenadas en notas limpias y perfectamente estructuradas.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}

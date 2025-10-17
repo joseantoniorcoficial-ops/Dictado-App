@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>App de Dictado</title>
+    <link rel="stylesheet" href="/index.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="importmap">
+      {
+        "imports": {
+          "@google/genai": "https://esm.sh/@google/genai@^0.8.0",
+          "marked": "https://esm.sh/marked@^4.0.0"
+        }
+      }
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  </head>
+  <body>
+    <div class="app-container">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>Mis Notas</h2>
+          <button id="newNoteButton" class="new-note-btn" title="Nueva Nota">
+            <i class="fas fa-plus"></i> Nueva Nota
+          </button>
+        </div>
+        <div class="note-list-container">
+          <ul id="noteList" class="note-list"></ul>
+        </div>
+        <div class="sidebar-footer">
+           <button class="action-button" id="themeToggleButton" title="Cambiar Tema">
+              <i class="fas fa-sun"></i>
+            </button>
+        </div>
+      </div>
+      <div class="main-content">
+        <div class="note-area">
+          <div class="note-header">
+            <button id="sidebarToggle" class="sidebar-toggle-btn" title="Mostrar/Ocultar Barra Lateral">
+              <i class="fas fa-bars"></i>
+            </button>
+            <div class="editor-title-container">
+              <div class="editor-title" contenteditable="true" placeholder="Nota sin Título"></div>
+              <span id="saveStatus" class="save-status"></span>
+            </div>
+            <div class="tab-navigation-container">
+              <div class="tab-navigation">
+                <button class="tab-button active" data-tab="note">Pulida</button>
+                <button class="tab-button" data-tab="raw">Borrador</button>
+                <div class="active-tab-indicator"></div>
+              </div>
+            </div>
+             <div id="noteActions" class="note-actions">
+                <button class="note-action-btn" id="copyPolishedButton" title="Copiar Nota Pulida"><i class="fas fa-copy"></i></button>
+                <button class="note-action-btn" id="downloadMarkdownButton" title="Descargar como Markdown"><i class="fas fa-download"></i></button>
+                <button class="note-action-btn" id="downloadPdfButton" title="Descargar como PDF"><i class="fas fa-file-pdf"></i></button>
+                <button class="note-action-btn" id="deleteNoteButton" title="Eliminar Nota"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+
+          <div class="note-content-wrapper">
+             <div class="spinner-overlay" id="polishedSpinner"><div class="spinner"></div></div>
+            <div
+              id="polishedNote"
+              class="note-content active"
+              contenteditable="true"
+              placeholder="Tus notas pulidas aparecerán aquí..."
+            ></div>
+
+            <div class="spinner-overlay" id="rawSpinner"><div class="spinner"></div></div>
+            <div
+              id="rawTranscription"
+              class="note-content"
+              contenteditable="true"
+              placeholder="La transcripción en bruto aparecerá aquí..."
+            ></div>
+          </div>
+        </div>
+
+        <div class="recording-interface">
+          <div id="liveRecordingTitle" class="live-recording-title" style="display: none">
+            Grabando
+          </div>
+          <canvas id="liveWaveformCanvas" style="display: none"></canvas>
+          <div id="liveRecordingTimerDisplay" class="live-recording-timer" style="display: none">
+            00:00.00
+          </div>
+
+          <div class="status-indicator">
+            <span id="recordingStatus" class="status-text">Listo para grabar</span>
+          </div>
+
+          <div class="recording-controls">
+            <button id="recordButton" class="record-button" title="Iniciar/Detener Grabación">
+              <div class="record-button-inner">
+                <i class="fas fa-microphone"></i>
+              </div>
+              <svg class="record-waves" viewBox="0 0 200 200">
+                <circle class="wave wave1" cx="100" cy="100" r="40" />
+                <circle class="wave wave2" cx="100" cy="100" r="70" />
+                <circle class="wave wave3" cx="100" cy="100" r="100" />
+              </svg>
+              <span class="record-text">Grabar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const tabNav = document.querySelector(".tab-navigation");
+        if (!tabNav) return;
+        
+        const tabButtons = tabNav.querySelectorAll(".tab-button");
+        const activeTabIndicator = tabNav.querySelector(".active-tab-indicator");
+        const noteContents = document.querySelectorAll(".note-content");
+
+        function setActiveTab(activeButton, skipAnimation = false) {
+          if (!activeButton || !activeTabIndicator) return;
+
+          tabButtons.forEach((btn) => btn.classList.remove("active"));
+          activeButton.classList.add("active");
+
+          const tabName = activeButton.getAttribute("data-tab");
+          noteContents.forEach((content) => content.classList.remove("active"));
+
+          if (tabName === "raw") {
+            document.getElementById("rawTranscription").classList.add("active");
+          } else {
+            document.getElementById("polishedNote").classList.add("active");
+          }
+
+          const originalTransition = activeTabIndicator.style.transition;
+          if (skipAnimation) {
+            activeTabIndicator.style.transition = "none";
+          } else {
+            activeTabIndicator.style.transition = "";
+          }
+
+          activeTabIndicator.style.left = `${activeButton.offsetLeft}px`;
+          activeTabIndicator.style.width = `${activeButton.offsetWidth}px`;
+
+          if (skipAnimation) {
+            activeTabIndicator.offsetHeight;
+            activeTabIndicator.style.transition = originalTransition;
+          }
+        }
+
+        tabButtons.forEach((button) => {
+          button.addEventListener("click", (e) => {
+            setActiveTab(e.currentTarget);
+          });
+        });
+
+        const initiallyActiveButton = tabNav.querySelector(".tab-button.active");
+        if (initiallyActiveButton) {
+          requestAnimationFrame(() => {
+            setActiveTab(initiallyActiveButton, true);
+          });
+        }
+
+        window.addEventListener("resize", () => {
+          requestAnimationFrame(() => {
+            const currentActiveButton = tabNav.querySelector(".tab-button.active");
+            if (currentActiveButton) {
+              setActiveTab(currentActiveButton, true);
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
