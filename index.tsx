@@ -7,13 +7,13 @@
 import {GoogleGenAI} from '@google/genai';
 import {marked} from 'marked';
 
+// Fix: Declare html2pdf to resolve 'Cannot find name' error.
+declare const html2pdf: any;
+
 const MODEL_NAME = 'gemini-2.5-flash';
 const STORAGE_KEY = 'voice-notes-app-data';
 
-// FIX: Declare html2pdf to avoid "Cannot find name" error.
-declare const html2pdf: any;
-
-// FIX: Define an interface for the Note object for better type safety.
+// Fix: Add Note interface for type safety.
 interface Note {
   id: string;
   title: string;
@@ -23,51 +23,66 @@ interface Note {
 }
 
 class VoiceNotesApp {
-  // FIX: Declare all class properties with their types.
-  private genAI: GoogleGenAI;
-  private recordButton: HTMLElement;
-  private recordingStatus: HTMLElement;
-  private rawTranscription: HTMLElement;
-  private polishedNote: HTMLElement;
-  private editorTitle: HTMLElement;
-  private themeToggleButton: HTMLElement;
-  private themeToggleIcon: HTMLElement;
-  private sidebar: HTMLElement;
-  private noteList: HTMLElement;
-  private newNoteButton: HTMLElement;
-  private sidebarToggle: HTMLElement;
-  private saveStatus: HTMLElement;
-  private copyPolishedButton: HTMLElement;
-  private downloadMarkdownButton: HTMLElement;
-  private downloadPdfButton: HTMLElement;
-  private deleteNoteButton: HTMLElement;
-  private rawSpinner: HTMLElement;
-  private polishedSpinner: HTMLElement;
-  private recordingInterface: HTMLElement;
-  private liveRecordingTitle: HTMLElement;
-  private liveWaveformCanvas: HTMLCanvasElement;
-  private liveRecordingTimerDisplay: HTMLElement;
-  private statusIndicatorDiv: HTMLElement;
+  // Fix: Declare all class properties to fix 'property does not exist' errors.
+  genAI: GoogleGenAI;
 
-  private mediaRecorder: MediaRecorder | null;
-  private audioChunks: Blob[];
-  private isRecording: boolean;
-  private stream: MediaStream | null;
-  private notes: Note[];
-  private currentNote: Note | null;
-  private saveTimeout: number | null;
-  private liveWaveformCtx: CanvasRenderingContext2D | null;
-  private audioContext: AudioContext | null;
-  private analyserNode: AnalyserNode | null;
-  private waveformDataArray: Uint8Array | null;
-  private waveformDrawingId: number | null;
-  private timerIntervalId: number | null;
-  private recordingStartTime: number;
+  // Main editor elements
+  recordButton: HTMLElement;
+  recordingStatus: HTMLElement;
+  rawTranscription: HTMLElement;
+  polishedNote: HTMLElement;
+  editorTitle: HTMLElement;
+  
+  // Theme toggle
+  themeToggleButton: HTMLElement;
+  themeToggleIcon: HTMLElement;
+  
+  // Sidebar and note management
+  sidebar: HTMLElement;
+  noteList: HTMLElement;
+  newNoteButton: HTMLElement;
+  sidebarToggle: HTMLElement;
+
+  // Note actions
+  saveStatus: HTMLElement;
+  copyPolishedButton: HTMLElement;
+  downloadMarkdownButton: HTMLElement;
+  downloadPdfButton: HTMLElement;
+  deleteNoteButton: HTMLElement;
+  
+  // Spinners
+  rawSpinner: HTMLElement;
+  polishedSpinner: HTMLElement;
+
+  // Live recording UI
+  recordingInterface: HTMLElement;
+  liveRecordingTitle: HTMLElement;
+  liveWaveformCanvas: HTMLCanvasElement | null;
+  liveRecordingTimerDisplay: HTMLElement;
+  statusIndicatorDiv: HTMLElement;
+  
+  // Instance properties
+  mediaRecorder: MediaRecorder | null;
+  audioChunks: Blob[];
+  isRecording: boolean;
+  stream: MediaStream | null;
+  notes: Note[];
+  currentNote: Note | null;
+  saveTimeout: number | null;
+  liveWaveformCtx: CanvasRenderingContext2D | null;
+  audioContext: AudioContext | null;
+  analyserNode: AnalyserNode | null;
+  waveformDataArray: Uint8Array | null;
+  waveformDrawingId: number | null;
+  timerIntervalId: number | null;
+  recordingStartTime: number;
+
 
   constructor() {
     this.genAI = new GoogleGenAI({apiKey: process.env.API_KEY});
 
     // Main editor elements
+    // Fix: Add non-null assertion (!) to getElementById/querySelector calls to ensure elements are not null.
     this.recordButton = document.getElementById('recordButton')!;
     this.recordingStatus = document.getElementById('recordingStatus')!;
     this.rawTranscription = document.getElementById('rawTranscription')!;
@@ -98,7 +113,7 @@ class VoiceNotesApp {
     // Live recording UI
     this.recordingInterface = document.querySelector('.recording-interface')!;
     this.liveRecordingTitle = document.getElementById('liveRecordingTitle')!;
-    this.liveWaveformCanvas = document.getElementById('liveWaveformCanvas') as HTMLCanvasElement;
+    this.liveWaveformCanvas = document.getElementById('liveWaveformCanvas') as (HTMLCanvasElement | null);
     this.liveRecordingTimerDisplay = document.getElementById('liveRecordingTimerDisplay')!;
     this.statusIndicatorDiv = this.recordingInterface.querySelector('.status-indicator')!;
     
@@ -362,7 +377,7 @@ class VoiceNotesApp {
   setupAudioVisualizer() {
     if (!this.stream || this.audioContext) return;
 
-    // FIX: Use `(window as any).webkitAudioContext` for broader browser compatibility.
+    // Fix: Use type assertion for webkitAudioContext for broader browser compatibility.
     this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = this.audioContext.createMediaStreamSource(this.stream);
     this.analyserNode = this.audioContext.createAnalyser();
@@ -420,7 +435,7 @@ class VoiceNotesApp {
   startLiveDisplay() {
     this.recordingInterface.classList.add('is-live');
     this.liveRecordingTitle.style.display = 'block';
-    this.liveWaveformCanvas.style.display = 'block';
+    if (this.liveWaveformCanvas) this.liveWaveformCanvas.style.display = 'block';
     this.liveRecordingTimerDisplay.style.display = 'block';
     this.setupCanvasDimensions();
     if (this.statusIndicatorDiv) this.statusIndicatorDiv.style.display = 'none';
@@ -438,7 +453,7 @@ class VoiceNotesApp {
   stopLiveDisplay() {
     this.recordingInterface.classList.remove('is-live');
     this.liveRecordingTitle.style.display = 'none';
-    this.liveWaveformCanvas.style.display = 'none';
+    if (this.liveWaveformCanvas) this.liveWaveformCanvas.style.display = 'none';
     this.liveRecordingTimerDisplay.style.display = 'none';
     if (this.statusIndicatorDiv) this.statusIndicatorDiv.style.display = 'block';
     const iconElement = this.recordButton.querySelector('.record-button-inner i');
@@ -518,8 +533,7 @@ class VoiceNotesApp {
     }
     this.recordingStatus.textContent = 'Convirtiendo audio...';
     const reader = new FileReader();
-    // FIX: Add type checking for reader.result to avoid calling .split on non-string.
-    const readResult = new Promise<string>((resolve, reject) => {
+    const readResult: Promise<string | ArrayBuffer | null> = new Promise((resolve, reject) => {
       reader.onloadend = () => {
         if (typeof reader.result === 'string') {
           resolve(reader.result.split(',')[1]);
@@ -530,7 +544,7 @@ class VoiceNotesApp {
       reader.onerror = () => reject(reader.error);
     });
     reader.readAsDataURL(audioBlob);
-    const base64Audio = await readResult;
+    const base64Audio = await readResult as string;
     if (!base64Audio) throw new Error('Falló la conversión de audio a base64');
     const mimeType = this.mediaRecorder?.mimeType || 'audio/webm';
     await this.getTranscription(base64Audio, mimeType);
@@ -540,7 +554,6 @@ class VoiceNotesApp {
     this.showSpinner(this.rawSpinner);
     try {
       this.recordingStatus.textContent = 'Obteniendo transcripción...';
-      // FIX: Correctly structure the contents for a multi-part request.
       const contents = [
         {text: 'Genera una transcripción completa y detallada de este audio.'},
         {inlineData: {mimeType, data: base64Audio}},
